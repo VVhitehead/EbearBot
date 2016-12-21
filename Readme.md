@@ -1,6 +1,6 @@
 ## **hack.chat Bot**
 
->Simple bot for https://hack.chat/ written in python.
+>Simple bot for https://hack.chat/
 Runs [ExistentialismBear](https://github.com/WhiteheadV/ExistentialistBear) CLI program and as one of its commands.
 
 ### **Usage**
