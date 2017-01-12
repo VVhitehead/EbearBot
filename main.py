@@ -13,7 +13,7 @@ import readline
 from OpenSSL import SSL
 
 
-comm = {'|source': '''The bot: https://github.com/WhiteheadV/Ebear-Bot
+comm = {'|source': '''The bot: https://github.com/WhiteheadV/EbearBot
 The bear: https://github.com/WhiteheadV/ExistentialistBear\nThe art: jgs''',
 '|help': '''Usage: \"|eb\" [args] (\"-s\" 4 source of last text or -say [string]),
 \"|afk [reason](optional)\", \"|lmsg [recipient] [your message]\", \"|source\",
@@ -95,7 +95,7 @@ def cmndBlk(msg):
         elif msg['text'].lower().strip() == '|source':
             ws.send(json.dumps({'cmd': 'chat', 'text': ('%s') % comm['|source']}))
         elif (msg['text'].lower().strip() == '|help'
-                or msg['text'].lower().strip()) == '|h':
+                or msg['text'].lower().strip() == '|h'):
             ws.send(json.dumps({'cmd': 'chat', 'text': ('%s') % comm['|help']}))
         elif msg['text'].lower()[:3] == '|g ':
             if len(msg['text'].strip()) > 3:
@@ -145,30 +145,27 @@ def afk(msg):
             usrstat[msg['nick']] = ''
             ws.send(json.dumps({'cmd': 'chat', 'text': 'User @%s is now afk.'
             % (msg['nick'])}))
-    elif msg['nick'] not in exceptions and '|lmsg' not in msg['text'].lower():
+    elif msg['nick'] not in exceptions and not msg['text'].lower().startswith('|lmsg'):
         for key, val in usrstat.items():
             if '@%s' % (key) in msg['text'] and key != msg['nick']:
+                if key != msg['text'].strip() and msg['text'].strip() != '@' + key:
+                    usrmsg.setdefault(key,
+                    {})[msg['nick']] = msg['text'].replace('@' + key, '', 1)
                 if val != '':
                     ws.send(json.dumps({'cmd': 'chat', 'text': '@%s user @%s is afk: %s'
                         % (msg['nick'], key, val)}))
-                    if key != msg['text'].strip():
-                        usrmsg.setdefault(key,
-                        {})[msg['nick']] = msg['text'].replace('@' + key, '', 1)
                 else:
                     ws.send(json.dumps({'cmd': 'chat', 'text': '@%s user @%s is afk.'
                         % (msg['nick'], key)}))
-                    if key != msg['text'].strip():
-                        usrmsg.setdefault(key,
-                        {})[msg['nick']] = msg['text'].replace('@' + key, '', 1)
             if msg['nick'] == key:
-                if msg['text'][0] == '|' and len(msg['text']) > 1:
+                if msg['text'][0] == '|':
                     break
                 ws.send(json.dumps({'cmd': 'chat', 'text': 'User @%s is now back.' % (key)}))
                 del usrstat[key]
                 for k, v in usrmsg.items():
                     if k == msg['nick']:
                         for key, val in v.items():
-                            ws.send(json.dumps({'cmd': 'chat', 'text': '@%s user @%s left:%s'
+                            ws.send(json.dumps({'cmd': 'chat', 'text': '@%s user @%s left: %s'
                                 % (k, key, val)}))
                             time.sleep(0.5)
                         del usrmsg[k]
@@ -186,7 +183,6 @@ def leaveMsg(msg):
                 ws.send(json.dumps({'cmd': 'chat', 'text':
                     'Usage is |lmsg [recipient] [your message]'}))
                 return
-            #Fix this mess l8er
             if len(n) > 0 and len(m) > 0 and n != comm['owname'].split('#')[0]:
                 usrlmsg.setdefault(n, {})[msg['nick']] = m, t
                 ws.send(json.dumps({'cmd': 'chat', 'text': ('@%s user @%s will get '
@@ -241,7 +237,6 @@ def on_open(ws):
 
 
 if __name__ == '__main__':
-    websocket.enableTrace(True)
     ws = websocket.WebSocketApp('wss://hack.chat/chat-ws',
                               on_message = on_message,
                               on_error = on_error,
