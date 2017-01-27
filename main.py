@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import websocket
 import _thread
@@ -12,7 +13,7 @@ import ssl
 import readline
 from OpenSSL import SSL
 
-
+# v(all the global vars)v
 comm = {'|source': '''The bot: https://github.com/WhiteheadV/EbearBot
 The bear: https://github.com/WhiteheadV/ExistentialistBear\nThe art: jgs''',
 '|help': '''Usage: \"|eb\" [args] (\"-s\" 4 source of last text or -say [string]),
@@ -20,7 +21,7 @@ The bear: https://github.com/WhiteheadV/ExistentialistBear\nThe art: jgs''',
 \"|g [query]\" (Search google), \"|ed [query]\" (Search Encyclopedia Dramatica)''',
 'owname': 'botName#Pass'}
 
-exceptions = [comm['owname'].split('#')[0]] # (((other bot nicks go here)))
+exceptions = [comm['owname'].split('#')[0]] # (other bot nicks go in this list)
 
 chrlst = '1234567890:().·•º…«¯´×†‡?!\";|\/`\',<>*@#$%^&-+=[]{}~'
 
@@ -32,8 +33,11 @@ usrlmsg = {}
 
 flag = False
 
+flags = [False, False, False, False, False, False, False, False, False]
+
 def pnctMrk(strng):
-    L = [':p', ':v', ':d', ':t', ':c', ':x', ':o', ':q', ':w', ':k', ':vv', ':f', '\'c']
+    L = [':p', ':v', ':d', ':t', ':c', ':x', ':o', ':q', ':w', ':k', ':vv',
+        ':f', '\'c']
     if (strng[-1] not in chrlst and
        any(strng.lower().endswith(sm) for sm in L) == False):
         strng += '.'
@@ -41,7 +45,7 @@ def pnctMrk(strng):
 
 def prsDrtn(seconds):
     dys = hrs = mins = 0
-    # (((rounding)))
+    # v(((rounding)))v
     scns = int(seconds)
     if seconds - scns > 0.5: scns += 1
     if (scns / 86400) >= 1:
@@ -59,39 +63,34 @@ def prsDrtn(seconds):
         return ('{0} days, {1:02d}:{2:02d}:{3:02d}'.format(dys, hrs, mins, scns))
     return ('{0:01d}:{1:02d}:{2:02d}'.format(hrs, mins, scns))
 
-def run(*args):
-    ws.send(json.dumps({'cmd': 'chat', 'text': runBear(args)}))
-
 def runBear(sors):
-    if not sors:
+    if sors == 0:
         p = subprocess.Popen('./Ebear',
         cwd='path to ExistentialistBear/',
         stdout=subprocess.PIPE, shell=False)
         (output, err) = p.communicate()
-        return output.decode('utf-8')
-    elif sors[0] == 1:
+        ws.send(json.dumps({'cmd': 'chat', 'text': output.decode('utf-8')}))
+    elif sors == 1:
         p = subprocess.Popen(['./Ebear', '-s'],
         cwd='path to ExistentialistBear/',
         stdout=subprocess.PIPE, shell=False)
         (output, err) = p.communicate()
-        return output.decode('utf-8')
+        ws.send(json.dumps({'cmd': 'chat', 'text': output.decode('utf-8')}))
     elif sors[0] == 2:
         p = subprocess.Popen(['./Ebear', '-say', sors[1]],
         cwd='path to ExistentialistBear/',
-        stdout=subprocess.PIPE, shell=False, universal_newlines=True)
+        stdout=subprocess.PIPE, shell=False)
         (output, err) = p.communicate()
-        return output
+        ws.send(json.dumps({'cmd': 'chat', 'text': output.decode('utf-8')}))
 
 def cmndBlk(msg):
     if msg['cmd'] == 'chat':
         if msg['text'].lower().strip() == '|eb':
-            _thread.start_new_thread(run, ())
+            _thread.start_new_thread(runBear, (0,))
         elif msg['text'].lower().strip() == '|eb -s':
-            _thread.start_new_thread(run, ((1,)))
-        elif msg['text'].lower()[:13] == '|eb -say ' and len(msg['text']) > 13:
-            _thread.start_new_thread(run, ((2, msg['text'][13:])))
+            _thread.start_new_thread(runBear, (1,))
         elif msg['text'].lower()[:9] == '|eb -say ' and len(msg['text']) > 9:
-            _thread.start_new_thread(run, ((2, msg['text'][9:])))
+            _thread.start_new_thread(runBear, ((2, msg['text'][9:]),))
         elif msg['text'].lower().strip() == '|source':
             ws.send(json.dumps({'cmd': 'chat', 'text': ('%s') % comm['|source']}))
         elif (msg['text'].lower().strip() == '|help'
@@ -109,6 +108,10 @@ def cmndBlk(msg):
                 ws.send(json.dumps({'cmd': 'chat', 'text': 'Usage is |ed \"string\"'}))
         elif msg['text'].lower() == '|ed':
             ws.send(json.dumps({'cmd': 'chat', 'text': 'Usage is |ed \"string\"'}))
+        elif msg['text'].lower() == '|@snow': # 4 snow <3
+            ws.send(json.dumps({'cmd': 'chat', 'text': ("I am nature's frozen"
+            "salivation; that which floats gently unto the ground,"
+            "caressing it with winter's fresh kiss.")}))
         afk(msg)
         responses(msg)
 
@@ -127,13 +130,38 @@ def out():
 
 def responses(msg):
     global flag
-    mssg = msg['text'].lower()
-    if mssg[:12]  == 'what is love' or mssg[:13] == 'what is love?':
-        ws.send(json.dumps({'cmd': 'chat', 'text': 'baby don\'t hurt me'}))
+    m = msg['text'].lower()
+    if m.startswith('what is love') and len(m) < 14 and not flag:
+        ws.send(json.dumps({'cmd': 'chat', 'text': 'baby don\'t hurt me..'}))
         flag = True
-    elif flag == True and (mssg == 'don\'t hurt me' or mssg == 'dont hurt me'):
-        ws.send(json.dumps({'cmd': 'chat', 'text': 'no more'}))
+    elif flag == True and (m == 'don\'t hurt me' or m == 'dont hurt me'):
+        ws.send(json.dumps({'cmd': 'chat', 'text': 'no more...'}))
         flag = False
+    if m.startswith('this is my rifle') and len(m) < 19 and not (any(flags)):
+        ws.send(json.dumps({'cmd': 'chat', 'text': 'There are many like it..'}))
+        flags[0] = True
+    elif m.startswith('but this one is mine') and len(m) < 23 and flags[0]:
+        ws.send(json.dumps({'cmd': 'chat',
+            'text': 'My rifle is my best friend..'}))
+        flags[0], flags[1] = False, True
+    elif (m.startswith('it is my life') and len(m) < 16 and not flags[0]
+            and flags[1]):
+        ws.send(json.dumps({'cmd': 'chat',
+            'text':'I must master it as I must master my life..'}))
+        flags[:2], flags[2] = [False for f in flags[:2]], True
+    elif (m.startswith('without me') and len(m) < 13 and not (any(flags[:2]))
+            and flags[2]):
+        ws.send(json.dumps({'cmd': 'chat', 'text': 'my rifle is useless..'}))
+        flags[:3], flags[3] = [False for f in flags[:3]], True
+    elif (m.startswith('without my rifle') and len(m) < 19 and
+            not (any(flags[:3])) and flags[3]):
+        ws.send(json.dumps({'cmd': 'chat', 'text': 'I am useless..'}))
+        flags[:4], flags[4] = [False for f in flags[:4]], True
+    elif (m.startswith('i must fire my rifle true') and len(m) < 29 and
+            not (any(flags[:4])) and flags[4]):
+        ws.send(json.dumps({'cmd': 'chat', 'text':
+        'I must shoot straighter than my enemy who is trying to kill me...'}))
+        flags[:] = [False for f in flags[:]]
 
 def afk(msg):
     if msg['text'].lower()[:4] == '|afk' and msg['nick'] not in usrstat:
