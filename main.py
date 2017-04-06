@@ -2,13 +2,14 @@
 # -*- coding: utf-8 -*-
 
 import websocket
-import _thread
 import time
+import _thread
 import json
 import unicodedata
 import subprocess
 import google
 import ED
+import WA
 import ssl
 import readline
 from OpenSSL import SSL
@@ -18,7 +19,8 @@ comm = {'|source': '''The bot: https://github.com/WhiteheadV/EbearBot
 The bear: https://github.com/WhiteheadV/ExistentialistBear\nThe art: jgs''',
 '|help': '''Usage: \"|eb\" [args] (\"-s\" 4 source of last text or -say [string]),
 \"|afk [reason](optional)\", \"|lmsg [recipient] [your message]\", \"|source\",
-\"|g [query]\" (Search google), \"|ed [query]\" (Search Encyclopedia Dramatica)''',
+\"|g [query]\" (Search google), \"|ed [query]\" (Search Encyclopedia Dramatica),
+\"|wa [query]\" (Compute answers with Wolphram Alpha)''',
 'owname': 'botName#Pass'}
 
 exceptions = [comm['owname'].split('#')[0]] # (other bot nicks go in this list)
@@ -45,9 +47,8 @@ def pnctMrk(strng):
 
 def prsDrtn(seconds):
     dys = hrs = mins = 0
-    # v(((rounding)))v
     scns = int(seconds)
-    if seconds - scns > 0.5: scns += 1
+    if seconds - scns > 0.5: scns += 1  # (((rounding)))
     if (scns / 86400) >= 1:
         dys = int(scns / 86400)
         scns %= 86400
@@ -66,19 +67,19 @@ def prsDrtn(seconds):
 def runBear(sors):
     if sors == 0:
         p = subprocess.Popen('./Ebear',
-        cwd='path to ExistentialistBear/',
+        cwd='/home/theone/Documents/Atom(SSD)/ExistentialistBear/',
         stdout=subprocess.PIPE, shell=False)
         (output, err) = p.communicate()
         ws.send(json.dumps({'cmd': 'chat', 'text': output.decode('utf-8')}))
     elif sors == 1:
         p = subprocess.Popen(['./Ebear', '-s'],
-        cwd='path to ExistentialistBear/',
+        cwd='/home/theone/Documents/Atom(SSD)/ExistentialistBear/',
         stdout=subprocess.PIPE, shell=False)
         (output, err) = p.communicate()
         ws.send(json.dumps({'cmd': 'chat', 'text': output.decode('utf-8')}))
     elif sors[0] == 2:
         p = subprocess.Popen(['./Ebear', '-say', sors[1]],
-        cwd='path to ExistentialistBear/',
+        cwd='/home/theone/Documents/Atom(SSD)/ExistentialistBear/',
         stdout=subprocess.PIPE, shell=False)
         (output, err) = p.communicate()
         ws.send(json.dumps({'cmd': 'chat', 'text': output.decode('utf-8')}))
@@ -108,25 +109,37 @@ def cmndBlk(msg):
                 ws.send(json.dumps({'cmd': 'chat', 'text': 'Usage is |ed \"string\"'}))
         elif msg['text'].lower() == '|ed':
             ws.send(json.dumps({'cmd': 'chat', 'text': 'Usage is |ed \"string\"'}))
-        elif msg['text'].lower() == '|@snow': # 4 snow <3
-            ws.send(json.dumps({'cmd': 'chat', 'text': ("I am nature's frozen"
-            "salivation; that which floats gently unto the ground,"
-            "caressing it with winter's fresh kiss.")}))
+        elif msg['text'].lower()[:4] == '|wa ':
+            if len(msg['text']) > 4:
+                ws.send(json.dumps({'cmd': 'chat', 'text': WA.search(msg['text'][4:])}))
+            else:
+                ws.send(json.dumps({'cmd': 'chat', 'text': 'Usage is |wa \"string\"'}))
+        elif msg['text'].lower() == '|wa':
+            ws.send(json.dumps({'cmd': 'chat', 'text': 'Usage is |wa \"string\"'}))
         afk(msg)
         responses(msg)
 
+def startup_hook():
+    readline.insert_text('» ')
+    readline.redisplay()
+
 def out():
-    readline.parse_and_bind('C-k: ";\n"')
-    text = []
-    line = ';'
+    try:
+        readline.parse_and_bind('tab: complete')
+        readline.parse_and_bind('set editing-mode vi')
+        readline.parse_and_bind('C-x: "\x16\n"')
+        readline.set_pre_input_hook(startup_hook)
+    except Exception as e:
+        print (e)
+        return
     while True:
-        line = input('$> ')
-        if line.endswith(';'):
-            text.append(line[:-1])
-        elif line:
-            text.append(line)
-            ws.send(json.dumps({'cmd': 'chat', 'text': '\n'.join(text)}))
-            text = []
+        try:
+            line = input()
+            line = line.strip('» ')
+            ws.send(json.dumps({'cmd': 'chat', 'text': line}))
+        except EOFError:
+            print ('EOF signaled, exiting...')
+            break
 
 def responses(msg):
     global flag
@@ -167,11 +180,11 @@ def afk(msg):
     if msg['text'].lower()[:4] == '|afk' and msg['nick'] not in usrstat:
         if len(msg['text'].strip()) > 4:
             usrstat[msg['nick']] = msg['text'][4:].strip()
-            ws.send(json.dumps({'cmd': 'chat', 'text': 'User @%s is now afk: %s'
+            ws.send(json.dumps({'cmd': 'chat', 'text': 'User @%s is now AFK: %s'
             % (msg['nick'], usrstat[msg['nick']])}))
         else:
             usrstat[msg['nick']] = ''
-            ws.send(json.dumps({'cmd': 'chat', 'text': 'User @%s is now afk.'
+            ws.send(json.dumps({'cmd': 'chat', 'text': 'User @%s is now AFK'
             % (msg['nick'])}))
     elif msg['nick'] not in exceptions and not msg['text'].lower().startswith('|lmsg'):
         for key, val in usrstat.items():
@@ -180,10 +193,10 @@ def afk(msg):
                     usrmsg.setdefault(key,
                     {})[msg['nick']] = msg['text'].replace('@' + key, '', 1)
                 if val != '':
-                    ws.send(json.dumps({'cmd': 'chat', 'text': '@%s user @%s is afk: %s'
+                    ws.send(json.dumps({'cmd': 'chat', 'text': '@%s user @%s is AFK: %s'
                         % (msg['nick'], key, val)}))
                 else:
-                    ws.send(json.dumps({'cmd': 'chat', 'text': '@%s user @%s is afk.'
+                    ws.send(json.dumps({'cmd': 'chat', 'text': '@%s user @%s is AFK'
                         % (msg['nick'], key)}))
             if msg['nick'] == key:
                 if msg['text'][0] == '|':
@@ -193,7 +206,7 @@ def afk(msg):
                 for k, v in usrmsg.items():
                     if k == msg['nick']:
                         for key, val in v.items():
-                            ws.send(json.dumps({'cmd': 'chat', 'text': '@%s user @%s left: %s'
+                            ws.send(json.dumps({'cmd': 'chat', 'text': '@%s user @%s left:%s'
                                 % (k, key, val)}))
                             time.sleep(0.5)
                         del usrmsg[k]
@@ -241,7 +254,7 @@ def leaveMsg(msg):
 
 def heartBeat():
     while(True):
-        time.sleep(50)
+        time.sleep(40)
         ws.send(json.dumps({'cmd': 'ping'}))
 
 def on_message(ws, message):
