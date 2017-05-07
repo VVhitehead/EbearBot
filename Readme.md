@@ -11,9 +11,9 @@ Use the bot by joining [?programming](https://hack.chat/?programming) and typing
 
 ### **Screen Demo**
 
-![GitHub Logo](/home/theone/share/eb_git_1.png)
+![](https://lut.im/pmvNFDacKh/ZT6B6RSZTjLdWH5f)
 
-![GitHub Logo](/home/theone/share/eb_git2.png)
+![](https://lut.im/8eMp2AexuT/rfBB0aLjsnkNSMah)
 
 ### **Contributing**
 
