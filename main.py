@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import websocket
@@ -7,12 +7,12 @@ import _thread
 import json
 import unicodedata
 import subprocess
-import google
+import Google
 import ED
 import WA
 import ssl
+import os
 import readline
-from OpenSSL import SSL
 
 # v(all the global vars)v
 comm = {'|source': '''The bot: https://github.com/WhiteheadV/EbearBot
@@ -33,17 +33,32 @@ usrmsg = {}
 
 usrlmsg = {}
 
+usrwmsg = {}
+
 flag = False
 
 flags = [False, False, False, False, False, False, False, False, False]
 
-def pnctMrk(strng):
+joined = 0
+
+eeCounter = 0
+
+
+def pnctMrk(strng): # Prob 2 be removed no longer necessary along with chrlst
     L = [':p', ':v', ':d', ':t', ':c', ':x', ':o', ':q', ':w', ':k', ':vv',
         ':f', '\'c']
     if (strng[-1] not in chrlst and
        any(strng.lower().endswith(sm) for sm in L) == False):
         strng += '.'
     return strng
+
+
+def getWorkingDir(): # to be used 4 future addons
+    # Gets the current working directory of our script
+    ret = os.path.abspath(os.path.join(__file__, os.pardir))
+    ret = ret.replace('\\', '/') # for windows
+    return ret # return: The directory containing our script
+
 
 def prsDrtn(seconds):
     dys = hrs = mins = 0
@@ -63,6 +78,7 @@ def prsDrtn(seconds):
     elif dys > 1:
         return ('{0} days, {1:02d}:{2:02d}:{3:02d}'.format(dys, hrs, mins, scns))
     return ('{0:01d}:{1:02d}:{2:02d}'.format(hrs, mins, scns))
+
 
 def runBear(sors):
     if sors == 0:
@@ -84,6 +100,7 @@ def runBear(sors):
         (output, err) = p.communicate()
         ws.send(json.dumps({'cmd': 'chat', 'text': output.decode('utf-8')}))
 
+
 def cmndBlk(msg):
     if msg['cmd'] == 'chat':
         if msg['text'].lower().strip() == '|eb':
@@ -99,7 +116,7 @@ def cmndBlk(msg):
             ws.send(json.dumps({'cmd': 'chat', 'text': ('%s') % comm['|help']}))
         elif msg['text'].lower()[:3] == '|g ':
             if len(msg['text'].strip()) > 3:
-                ws.send(json.dumps({'cmd': 'chat', 'text': google.search(msg['text'][3:])}))
+                ws.send(json.dumps({'cmd': 'chat', 'text': Google.search(msg['text'][3:])}))
             else:
                 ws.send(json.dumps({'cmd': 'chat', 'text': 'Usage is |g \"string\"'}))
         elif msg['text'].lower()[:4] == '|ed ':
@@ -116,12 +133,17 @@ def cmndBlk(msg):
                 ws.send(json.dumps({'cmd': 'chat', 'text': 'Usage is |wa \"string\"'}))
         elif msg['text'].lower() == '|wa':
             ws.send(json.dumps({'cmd': 'chat', 'text': 'Usage is |wa \"string\"'}))
+        elif msg['text'].lower() == '|uptime':
+            ws.send(json.dumps({'cmd': 'chat', 'text': '%s' % prsDrtn(time.time() - joined)}))
         afk(msg)
         responses(msg)
+        ee(msg)
+
 
 def startup_hook():
     readline.insert_text('» ')
     readline.redisplay()
+
 
 def out():
     try:
@@ -130,7 +152,7 @@ def out():
         readline.parse_and_bind('C-x: "\x16\n"')
         readline.set_pre_input_hook(startup_hook)
     except Exception as e:
-        print (e)
+        print(e)
         return
     while True:
         try:
@@ -138,16 +160,18 @@ def out():
             line = line.strip('» ')
             ws.send(json.dumps({'cmd': 'chat', 'text': line}))
         except EOFError:
-            print ('EOF signaled, exiting...')
+            print('EOF signaled, exiting...')
             break
+
 
 def responses(msg):
     global flag
     m = msg['text'].lower()
+    #print (flags)
     if m.startswith('what is love') and len(m) < 14 and not flag:
         ws.send(json.dumps({'cmd': 'chat', 'text': 'baby don\'t hurt me..'}))
         flag = True
-    elif flag == True and (m == 'don\'t hurt me' or m == 'dont hurt me'):
+    elif flag is True and (m == 'don\'t hurt me' or m == 'dont hurt me'):
         ws.send(json.dumps({'cmd': 'chat', 'text': 'no more...'}))
         flag = False
     if m.startswith('this is my rifle') and len(m) < 19 and not (any(flags)):
@@ -175,6 +199,7 @@ def responses(msg):
         ws.send(json.dumps({'cmd': 'chat', 'text':
         'I must shoot straighter than my enemy who is trying to kill me...'}))
         flags[:] = [False for f in flags[:]]
+
 
 def afk(msg):
     if msg['text'].lower()[:4] == '|afk' and msg['nick'] not in usrstat:
@@ -212,6 +237,7 @@ def afk(msg):
                         del usrmsg[k]
                         break
                 break
+
 
 def leaveMsg(msg):
     if msg['cmd'] == 'chat':
@@ -252,10 +278,58 @@ def leaveMsg(msg):
                 del usrlmsg[key]
                 break
 
+
+def whisplveMsg(msg):
+    if (msg['cmd'] == 'info' and msg['type'] == 'whisper'
+        and msg['from'] != comm['owname'].split('#')[0]
+        and msg['trip'] != comm['owname'].split('#')[1]):
+            if msg['text'].lower().find('|lmsg') != -1:
+                try:
+                    n = msg['text'].strip().split()[3].replace('@', '', 1) # Names can't be longer then n implement except error 4 it
+                    ml = msg['text'].strip().splitlines()
+                    m = ''.join(ml)
+                    m = m.split('whispered: ', 1)[1]
+                    m = m.strip().split(n, 1)[1]
+                    t = time.time()
+                except IndexError:
+                    ws.send(json.dumps({'cmd': 'chat', 'text':
+                        '/r Usage is /whisper @%s |lmsg [recipient] [your message]' % (comm['owname'].split('#')[0])}))
+                    return
+                if len(n) > 0 and len(m) > 0 and n != comm['owname'].split('#')[0]:
+                    usrwmsg.setdefault(n, {})[msg['from']] = m, t
+                    ws.send(json.dumps({'cmd': 'chat', 'text': '/r @%s user @%s will get '
+                    'your message whispered the first time he writes something or joins this room.'
+                        % (msg['from'], n)}))
+                else:
+                    ws.send(json.dumps({'cmd': 'chat', 'text':
+                        '/r Usage is /whisper @%s |lmsg [recipient] [your message]' % (comm['owname'].split('#')[0])}))
+                    return
+            for key, val in usrwmsg.items():
+                if key.lower() == msg['from'].lower():
+                    for k, v in val.items():
+                        ws.send(json.dumps({'cmd': 'chat', 'text': '/whisper @%s user @%s '
+                        'left you(%s ago): %s'
+                            % (key, k, prsDrtn(time.time() - v[1]), v[0])}))
+                        time.sleep(0.5)
+                    del usrwmsg[key]
+                    break
+    elif msg['cmd'] == 'onlineAdd' or msg['cmd'] == 'chat' or (msg['cmd'] == 'info' and msg['type'] == 'whisper'):
+        for key, val in usrwmsg.items():
+            if key.lower() == msg['nick'].lower():
+                for k, v in val.items():
+                    ws.send(json.dumps({'cmd': 'chat', 'text': '/whisper @%s user @%s '
+                    'left you(%s ago): %s'
+                        % (key, k, prsDrtn(time.time() - v[1]), v[0])}))
+                    time.sleep(0.5)
+                del usrwmsg[key]
+                break
+
+
 def heartBeat():
     while(True):
         time.sleep(40)
         ws.send(json.dumps({'cmd': 'ping'}))
+
 
 def on_message(ws, message):
     message = json.loads(message)
@@ -264,24 +338,34 @@ def on_message(ws, message):
         #print (i, message[i])
     cmndBlk(message)
     leaveMsg(message)
+    whisplveMsg(message)
+
 
 def on_error(ws, error):
-    print (error)
+    print(error)
+
 
 def on_close(ws):
-    print ('### closed ###')
+    print('### closed ###')
+
 
 def on_open(ws):
     ws.send(json.dumps({'cmd': 'join', 'channel': 'programming', 'nick': comm['owname']}))
+    global joined
+    joined = time.time()
     _thread.start_new_thread(heartBeat, ())
     _thread.start_new_thread(out, ())
 
 
 if __name__ == '__main__':
     ws = websocket.WebSocketApp('wss://hack.chat/chat-ws',
-                              on_message = on_message,
-                              on_error = on_error,
-                              on_close = on_close,
-                              )
+                                 on_error = on_error,
+                                 on_close = on_close,
+                               )
     ws.on_open = on_open
     ws.run_forever(sslopt={'cert_reqs': ssl.CERT_NONE})
+    #while True:
+        #try:
+            #ws.run_forever(sslopt={'cert_reqs': ssl.CERT_NONE})
+        #except:
+            #pass
