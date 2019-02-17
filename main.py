@@ -15,15 +15,17 @@ import os
 import readline
 
 # v(all the global vars)v
+com = {'owname': 'botName#Pass'}
+
 comm = {'|source': '''The bot: https://github.com/WhiteheadV/EbearBot
 The bear: https://github.com/WhiteheadV/ExistentialistBear\nThe art: jgs''',
 '|help': '''Usage: \"|eb\" [args] (\"-s\" 4 source of last text or -say [string]),
-\"|afk [reason](optional)\", \"|lmsg [recipient] [your message]\", \"|source\",
+\"|afk [reason](optional)\", \"|lmsg [recipient] [your message]\", \"|source\", \
+\"/whisper @{} |lmsg [recipient] [your message]\" (Leave msg privately),
 \"|g [query]\" (Search google), \"|ed [query]\" (Search Encyclopedia Dramatica),
-\"|wa [query]\" (Compute answers with Wolphram Alpha)''',
-'owname': 'botName#Pass'}
+\"|wa [query]\" (Compute answers with Wolphram Alpha)'''.format(com['owname'].split('#')[0])}
 
-exceptions = [comm['owname'].split('#')[0]] # (other bot nicks go in this list)
+exceptions = [com['owname'].split('#')[0]] # (other bot nicks go in this list)
 
 chrlst = '1234567890:().·•º…«¯´×†‡?!\";|\/`\',<>*@#$%^&-+=[]{}~'
 
@@ -137,7 +139,6 @@ def cmndBlk(msg):
             ws.send(json.dumps({'cmd': 'chat', 'text': '%s' % prsDrtn(time.time() - joined)}))
         afk(msg)
         responses(msg)
-        ee(msg)
 
 
 def startup_hook():
@@ -250,7 +251,7 @@ def leaveMsg(msg):
                 ws.send(json.dumps({'cmd': 'chat', 'text':
                     'Usage is |lmsg [recipient] [your message]'}))
                 return
-            if len(n) > 0 and len(m) > 0 and n != comm['owname'].split('#')[0]:
+            if len(n) > 0 and len(m) > 0 and n != com['owname'].split('#')[0]:
                 usrlmsg.setdefault(n, {})[msg['nick']] = m, t
                 ws.send(json.dumps({'cmd': 'chat', 'text': ('@%s user @%s will get '
                 'your message the first time he writes something or joins this room.')
@@ -281,8 +282,8 @@ def leaveMsg(msg):
 
 def whisplveMsg(msg):
     if (msg['cmd'] == 'info' and msg['type'] == 'whisper'
-        and msg['from'] != comm['owname'].split('#')[0]
-        and msg['trip'] != comm['owname'].split('#')[1]):
+        and msg['from'] != com['owname'].split('#')[0]
+        and msg['trip'] != com['owname'].split('#')[1]):
             if msg['text'].lower().find('|lmsg') != -1:
                 try:
                     n = msg['text'].strip().split()[3].replace('@', '', 1) # Names can't be longer then n implement except error 4 it
@@ -293,16 +294,16 @@ def whisplveMsg(msg):
                     t = time.time()
                 except IndexError:
                     ws.send(json.dumps({'cmd': 'chat', 'text':
-                        '/r Usage is /whisper @%s |lmsg [recipient] [your message]' % (comm['owname'].split('#')[0])}))
+                        '/r Usage is /whisper @%s |lmsg [recipient] [your message]' % (com['owname'].split('#')[0])}))
                     return
-                if len(n) > 0 and len(m) > 0 and n != comm['owname'].split('#')[0]:
+                if len(n) > 0 and len(m) > 0 and n != com['owname'].split('#')[0]:
                     usrwmsg.setdefault(n, {})[msg['from']] = m, t
                     ws.send(json.dumps({'cmd': 'chat', 'text': '/r @%s user @%s will get '
                     'your message whispered the first time he writes something or joins this room.'
                         % (msg['from'], n)}))
                 else:
                     ws.send(json.dumps({'cmd': 'chat', 'text':
-                        '/r Usage is /whisper @%s |lmsg [recipient] [your message]' % (comm['owname'].split('#')[0])}))
+                        '/r Usage is /whisper @%s |lmsg [recipient] [your message]' % (com['owname'].split('#')[0])}))
                     return
             for key, val in usrwmsg.items():
                 if key.lower() == msg['from'].lower():
@@ -350,7 +351,7 @@ def on_close(ws):
 
 
 def on_open(ws):
-    ws.send(json.dumps({'cmd': 'join', 'channel': 'programming', 'nick': comm['owname']}))
+    ws.send(json.dumps({'cmd': 'join', 'channel': 'programming', 'nick': com['owname']}))
     global joined
     joined = time.time()
     _thread.start_new_thread(heartBeat, ())
