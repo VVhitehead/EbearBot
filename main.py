@@ -45,6 +45,9 @@ joined = 0
 
 eeCounter = 0
 
+wspCnt = 0
+
+
 
 def pnctMrk(strng): # Prob 2 be removed no longer necessary along with chrlst
     L = [':p', ':v', ':d', ':t', ':c', ':x', ':o', ':q', ':w', ':k', ':vv',
@@ -286,8 +289,9 @@ def whisplveMsg(msg):
         and msg['trip'] != com['owname'].split('#')[1]):
             if msg['text'].lower().find('|lmsg') != -1:
                 try:
-                    n = msg['text'].strip().split()[3].replace('@', '', 1) # Names can't be longer then n implement except error 4 it
-                    ml = msg['text'].strip().splitlines()
+                    n = msg['text'].strip().split()[3].replace('@', '', 1) # Names can't be longer then n implement
+                    wspPreserv = re.compile('[\S\s]*') # an except error 4 it
+                    ml = wspPreserv.findall(msg['text']) # Preserves the whole msg including whitespace and unicode
                     m = ''.join(ml)
                     m = m.split('whispered: ', 1)[1]
                     m = m.strip().split(n, 1)[1]
@@ -301,6 +305,9 @@ def whisplveMsg(msg):
                     ws.send(json.dumps({'cmd': 'chat', 'text': '/r @%s user @%s will get '
                     'your message whispered the first time he writes something or joins this room.'
                         % (msg['from'], n)}))
+                    global wspCnt
+                    wspCnt += 1 # info on number of priv msg's issued, no other metadata besides number of priv messages
+                    print('Stored private message count: {}'.format(wspCnt)) #or if its delivery is sucessfull is logged
                 else:
                     ws.send(json.dumps({'cmd': 'chat', 'text':
                         '/r Usage is /whisper @%s |lmsg [recipient] [your message]' % (com['owname'].split('#')[0])}))
