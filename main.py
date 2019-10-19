@@ -7,7 +7,7 @@ import _thread
 import json
 import unicodedata
 import subprocess
-import Google
+import google
 import ED
 import WA
 import ssl
