@@ -5,15 +5,12 @@ Runs [ExistentialismBear](https://github.com/WhiteheadV/ExistentialistBear) CLI 
 
 ### **Usage**
 
-Specify your directory path to 'ExistentialsimBear' folder in main.py.
-Run the bot(requires python3).
+Specify your full directory path to `../ExistentialsimBear/` folder in main.py.
 Use the bot by joining [?programming](https://hack.chat/?programming) and typing |h to get a list of commands.
 
 ### **Screen Demo**
 
 ![](https://lut.im/pmvNFDacKh/ZT6B6RSZTjLdWH5f)
-
-![](https://lut.im/8eMp2AexuT/rfBB0aLjsnkNSMah)
 
 ### **Contributing**
 

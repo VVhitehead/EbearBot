@@ -11,58 +11,41 @@ import Google
 import ED
 import WA
 import ssl
-import os
 import readline
+import re
+import urllib.request
 
 # v(all the global vars)v
-com = {'owname': 'botName#Pass'}
+com = {'owname': 'botName#Pass', 'owntrip': 'tripcode'}
 
 comm = {'|source': '''The bot: https://github.com/WhiteheadV/EbearBot
 The bear: https://github.com/WhiteheadV/ExistentialistBear\nThe art: jgs''',
-'|help': '''Usage: \"|eb\" [args] (\"-s\" 4 source of last text or -say [string]),
-\"|afk [reason](optional)\", \"|lmsg [recipient] [your message]\", \"|source\", \
-\"/whisper @{} |lmsg [recipient] [your message]\" (Leave msg privately),
-\"|g [query]\" (Search google), \"|ed [query]\" (Search Encyclopedia Dramatica),
-\"|wa [query]\" (Compute answers with Wolphram Alpha)'''.format(com['owname'].split('#')[0])}
+'|help': '''Usage / List of **commands**: 
+\"**|eb** [args]\" (**-s** 4 getting source of the last said text or **-say** [_custom_ string](Any _arbitrary_ string))
+\"**|afk** [reason]\"(_Optional_ argument)
+\"**|lmsg** [recipient nick] [your message]\" (Leave a message via nickname - **Works _with_** `/whisper` @{} **lmsg** [recipient nick] [your message])
+\"**|tmsg** [recipient trip] [your message]\" (Leave a message via tripcode - **Works _with_** `/whisper` @{} **tmsg** [recipient trip] [your message])
+\"**|source**\" (About the bot) 
+\"**|g** [query]\" (Search google) 
+\"**|ed** [query]\" (Search Encyclopedia Dramatica) - $\\large{{\\color{{red}}\\mathbf{{Deprecated}}}}$
+\"**|wa** [query]\" [//TeXForm](_Optional_(returns output in LaTeX form)) (Compute answers with Wolphram Alpha)'''.format(com['owname'].split('#')[0],
+                                                                                                                          com['owname'].split('#')[0])}
 
-exceptions = [com['owname'].split('#')[0]] # (other bot nicks go in this list)
-
-chrlst = '1234567890:().·•º…«¯´×†‡?!\";|\/`\',<>*@#$%^&-+=[]{}~'
+exceptions = [com['owname'].split('#')[0]] # (nicks of other bots go in this list)
 
 usrstat = {}
-
 usrmsg = {}
-
 usrlmsg = {}
-
+usrtripmsg = {}
+usrwsptmsg = {}
 usrwmsg = {}
 
 flag = False
-
 flags = [False, False, False, False, False, False, False, False, False]
 
 joined = 0
-
 eeCounter = 0
-
 wspCnt = 0
-
-
-
-def pnctMrk(strng): # Prob 2 be removed no longer necessary along with chrlst
-    L = [':p', ':v', ':d', ':t', ':c', ':x', ':o', ':q', ':w', ':k', ':vv',
-        ':f', '\'c']
-    if (strng[-1] not in chrlst and
-       any(strng.lower().endswith(sm) for sm in L) == False):
-        strng += '.'
-    return strng
-
-
-def getWorkingDir(): # to be used 4 future addons
-    # Gets the current working directory of our script
-    ret = os.path.abspath(os.path.join(__file__, os.pardir))
-    ret = ret.replace('\\', '/') # for windows
-    return ret # return: The directory containing our script
 
 
 def prsDrtn(seconds):
@@ -86,25 +69,40 @@ def prsDrtn(seconds):
 
 
 def runBear(sors):
+    prefix = '```text \n'
+    #sufix = '```' # redundant as in the prefix formats strings that follow and 
     if sors == 0:
         p = subprocess.Popen('./Ebear',
-        cwd='/home/theone/Documents/Atom(SSD)/ExistentialistBear/',
+        cwd='~/.../ExistentialistBear/', # YOUR path to ExistentialistBear folder containing the executable
         stdout=subprocess.PIPE, shell=False)
         (output, err) = p.communicate()
-        ws.send(json.dumps({'cmd': 'chat', 'text': output.decode('utf-8')}))
+        ws.send(json.dumps({'cmd': 'chat', 'text': prefix + output.decode('utf-8')}))
     elif sors == 1:
         p = subprocess.Popen(['./Ebear', '-s'],
-        cwd='/home/theone/Documents/Atom(SSD)/ExistentialistBear/',
+        cwd='~/.../ExistentialistBear/', # YOUR path to ExistentialistBear folder containing the executable
         stdout=subprocess.PIPE, shell=False)
         (output, err) = p.communicate()
-        ws.send(json.dumps({'cmd': 'chat', 'text': output.decode('utf-8')}))
+        ws.send(json.dumps({'cmd': 'chat', 'text': prefix + output.decode('utf-8')}))
     elif sors[0] == 2:
         p = subprocess.Popen(['./Ebear', '-say', sors[1]],
-        cwd='/home/theone/Documents/Atom(SSD)/ExistentialistBear/',
+        cwd='~/.../ExistentialistBear/', # YOUR path to ExistentialistBear folder containing the executable
         stdout=subprocess.PIPE, shell=False)
         (output, err) = p.communicate()
-        ws.send(json.dumps({'cmd': 'chat', 'text': output.decode('utf-8')}))
+        ws.send(json.dumps({'cmd': 'chat', 'text': prefix + output.decode('utf-8')}))
 
+
+def runDYM(word, n=5):
+    if int(n) > 10:
+        return runDYM(word, n=10) # Sanitize output by allowing maximum of 10 results!
+    p = subprocess.Popen(['dym', '-c', '-n', '{}'.format(n), '{}'.format(word)],
+        cwd = '/usr/bin',
+        stdout = subprocess.PIPE, shell = False)
+    (output, err) = p.communicate()
+    frmtd_output = '==Did you mean?==\n'
+    url = 'https://www.thefreedictionary.com/'
+    for i, chunk in enumerate(output.decode('utf-8').split('\n')[:-1]):
+        frmtd_output += '[{}]({})\n'.format(str(i + 1) + '. ' + chunk, url + chunk)
+    ws.send(json.dumps({'cmd': 'chat', 'text': frmtd_output})) # Modify output b4 sending
 
 def cmndBlk(msg):
     if msg['cmd'] == 'chat':
@@ -114,6 +112,10 @@ def cmndBlk(msg):
             _thread.start_new_thread(runBear, (1,))
         elif msg['text'].lower()[:9] == '|eb -say ' and len(msg['text']) > 9:
             _thread.start_new_thread(runBear, ((2, msg['text'][9:]),))
+        elif msg['text'].lower()[:8] == '|dym -n ':
+            _thread.start_new_thread(runDYM, ((2, '{}'.format(msg['text'][9:])), msg['text'][8:10]))
+        elif msg['text'].lower()[:5] == '|dym ' and len(msg['text']) > 7:
+            _thread.start_new_thread(runDYM, ((2, '{}'.format(msg['text'][5:])),))
         elif msg['text'].lower().strip() == '|source':
             ws.send(json.dumps({'cmd': 'chat', 'text': ('%s') % comm['|source']}))
         elif (msg['text'].lower().strip() == '|help'
@@ -145,7 +147,7 @@ def cmndBlk(msg):
 
 
 def startup_hook():
-    readline.insert_text('» ')
+    readline.insert_text('❯ ')
     readline.redisplay()
 
 
@@ -161,7 +163,7 @@ def out():
     while True:
         try:
             line = input()
-            line = line.strip('» ')
+            line = line.strip('❯ ')
             ws.send(json.dumps({'cmd': 'chat', 'text': line}))
         except EOFError:
             print('EOF signaled, exiting...')
@@ -171,7 +173,6 @@ def out():
 def responses(msg):
     global flag
     m = msg['text'].lower()
-    #print (flags)
     if m.startswith('what is love') and len(m) < 14 and not flag:
         ws.send(json.dumps({'cmd': 'chat', 'text': 'baby don\'t hurt me..'}))
         flag = True
@@ -203,29 +204,33 @@ def responses(msg):
         ws.send(json.dumps({'cmd': 'chat', 'text':
         'I must shoot straighter than my enemy who is trying to kill me...'}))
         flags[:] = [False for f in flags[:]]
-
+    if ('can' in msg and ('help' in msg or 'ask' in msg)):
+        if ('can help' not in msg and 'can\'t help' not in msg and
+            'cant help' not in msg and 'won\'t help' not in msg):
+            ws.send(json.dumps({'cmd': 'chat',
+            'text': 'Don\'t ask to ask, ask your question.'}))
 
 def afk(msg):
     if msg['text'].lower()[:4] == '|afk' and msg['nick'] not in usrstat:
         if len(msg['text'].strip()) > 4:
             usrstat[msg['nick']] = msg['text'][4:].strip()
-            ws.send(json.dumps({'cmd': 'chat', 'text': 'User @%s is now AFK: %s'
+            ws.send(json.dumps({'cmd': 'chat', 'text': 'User @%s is now **AFK**: %s'
             % (msg['nick'], usrstat[msg['nick']])}))
         else:
             usrstat[msg['nick']] = ''
-            ws.send(json.dumps({'cmd': 'chat', 'text': 'User @%s is now AFK'
+            ws.send(json.dumps({'cmd': 'chat', 'text': 'User @%s is now **AFK**'
             % (msg['nick'])}))
-    elif msg['nick'] not in exceptions and not msg['text'].lower().startswith('|lmsg'):
+    elif msg['nick'] not in exceptions and not msg['text'].lower().startswith('|lmsg') and not msg['text'].lower().startswith('|tmsg'):
         for key, val in usrstat.items():
             if '@%s' % (key) in msg['text'] and key != msg['nick']:
                 if key != msg['text'].strip() and msg['text'].strip() != '@' + key:
                     usrmsg.setdefault(key,
                     {})[msg['nick']] = msg['text'].replace('@' + key, '', 1)
                 if val != '':
-                    ws.send(json.dumps({'cmd': 'chat', 'text': '@%s user @%s is AFK: %s'
+                    ws.send(json.dumps({'cmd': 'chat', 'text': '@%s user @%s is **AFK**: %s'
                         % (msg['nick'], key, val)}))
                 else:
-                    ws.send(json.dumps({'cmd': 'chat', 'text': '@%s user @%s is AFK'
+                    ws.send(json.dumps({'cmd': 'chat', 'text': '@%s user @%s is **AFK**'
                         % (msg['nick'], key)}))
             if msg['nick'] == key:
                 if msg['text'][0] == '|':
@@ -254,7 +259,7 @@ def leaveMsg(msg):
                 ws.send(json.dumps({'cmd': 'chat', 'text':
                     'Usage is |lmsg [recipient] [your message]'}))
                 return
-            if len(n) > 0 and len(m) > 0 and n != com['owname'].split('#')[0]:
+            if len(n) > 0 and len(m) > 0 and msg['trip'] != com['owntrip']:
                 usrlmsg.setdefault(n, {})[msg['nick']] = m, t
                 ws.send(json.dumps({'cmd': 'chat', 'text': ('@%s user @%s will get '
                 'your message the first time he writes something or joins this room.')
@@ -282,16 +287,55 @@ def leaveMsg(msg):
                 del usrlmsg[key]
                 break
 
+def leaveTripmsg(msg):
+    if msg['cmd'] == 'chat':
+        if msg['text'].lower()[:5] == '|tmsg':
+            try:
+                receiverTrip = msg['text'][5:].strip().split(None, 1)[0]
+                senderTrip = msg['trip']
+                m = msg['text'][5:].strip().split(None, 1)[1]
+                t = time.time()
+            except IndexError:
+                ws.send(json.dumps({'cmd': 'chat', 'text':
+                    'Usage is |tmsg [recipient] [your message]'}))
+                return
+            if len(receiverTrip) > 0 and len(m) > 0 and receiverTrip != senderTrip and receiverTrip != com['owntrip']:
+                    usrtripmsg.setdefault(receiverTrip, {})[senderTrip] = m, t
+                    ws.send(json.dumps({'cmd': 'chat', 'text': ('@%s user with the trip *__%s__* will get '
+                    'your message the first time he writes something or joins this room.')
+                        % (msg['nick'], receiverTrip)}))
+            else:
+                ws.send(json.dumps({'cmd': 'chat', 'text':
+                    'Usage is |tmsg [recipient] [your message]'}))
+        for key, val in usrtripmsg.items():
+            if key == msg['trip']:
+                for k, v in val.items():
+                    ws.send(json.dumps({'cmd': 'chat', 'text': '@%s user with the trip *__%s__* '
+                    'left you(%s ago): %s'
+                        % (msg['nick'], k, prsDrtn(time.time() - v[1]), v[0])}))
+                    time.sleep(0.5)
+                del usrtripmsg[key]
+                break
+    elif msg['cmd'] == 'onlineAdd':
+        for key, val in usrtripmsg.items():
+            if key == msg['trip']:
+                for k, v in val.items():
+                    ws.send(json.dumps({'cmd': 'chat', 'text': '@%s user with the trip *__%s__* '
+                    'left you(%s ago): %s'
+                        % (msg['nick'], k, prsDrtn(time.time() - v[1]), v[0])}))
+                    time.sleep(0.5)
+                del usrtripmsg[key]
+                break
 
 def whisplveMsg(msg):
     if (msg['cmd'] == 'info' and msg['type'] == 'whisper'
         and msg['from'] != com['owname'].split('#')[0]
         and msg['trip'] != com['owname'].split('#')[1]):
-            if msg['text'].lower().find('|lmsg') != -1:
+            if msg['text'].lower().strip().split()[2] == '|lmsg' or msg['text'].lower().strip().split()[2] == 'lmsg':
                 try:
-                    n = msg['text'].strip().split()[3].replace('@', '', 1) # Names can't be longer then n implement
-                    wspPreserv = re.compile('[\S\s]*') # an except error 4 it
-                    ml = wspPreserv.findall(msg['text']) # Preserves the whole msg including whitespace and unicode
+                    n = msg['text'].strip().split()[3].replace('@', '', 1)
+                    wspPreserv = re.compile('[\S\s]*')
+                    ml = wspPreserv.findall(msg['text'])
                     m = ''.join(ml)
                     m = m.split('whispered: ', 1)[1]
                     m = m.strip().split(n, 1)[1]
@@ -300,14 +344,14 @@ def whisplveMsg(msg):
                     ws.send(json.dumps({'cmd': 'chat', 'text':
                         '/r Usage is /whisper @%s |lmsg [recipient] [your message]' % (com['owname'].split('#')[0])}))
                     return
-                if len(n) > 0 and len(m) > 0 and n != com['owname'].split('#')[0]:
+                if len(n) > 0 and len(m) > 0 and msg['trip'] != com['owntrip']:
                     usrwmsg.setdefault(n, {})[msg['from']] = m, t
                     ws.send(json.dumps({'cmd': 'chat', 'text': '/r @%s user @%s will get '
                     'your message whispered the first time he writes something or joins this room.'
                         % (msg['from'], n)}))
                     global wspCnt
-                    wspCnt += 1 # info on number of priv msg's issued, no other metadata besides number of priv messages
-                    print('Stored private message count: {}'.format(wspCnt)) #or if its delivery is sucessfull is logged
+                    wspCnt += 1
+                    print('Stored private message count: {}'.format(wspCnt))
                 else:
                     ws.send(json.dumps({'cmd': 'chat', 'text':
                         '/r Usage is /whisper @%s |lmsg [recipient] [your message]' % (com['owname'].split('#')[0])}))
@@ -320,8 +364,10 @@ def whisplveMsg(msg):
                             % (key, k, prsDrtn(time.time() - v[1]), v[0])}))
                         time.sleep(0.5)
                     del usrwmsg[key]
+                    wspCnt -= 1
+                    print('Stored private message count: {}'.format(wspCnt))
                     break
-    elif msg['cmd'] == 'onlineAdd' or msg['cmd'] == 'chat' or (msg['cmd'] == 'info' and msg['type'] == 'whisper'):
+    elif msg['cmd'] == 'onlineAdd' or msg['cmd'] == 'chat':
         for key, val in usrwmsg.items():
             if key.lower() == msg['nick'].lower():
                 for k, v in val.items():
@@ -330,50 +376,134 @@ def whisplveMsg(msg):
                         % (key, k, prsDrtn(time.time() - v[1]), v[0])}))
                     time.sleep(0.5)
                 del usrwmsg[key]
+                wspCnt -= 1
+                print('Stored private message count: {}'.format(wspCnt))
+                break
+
+def whspTripMsg(msg):
+    if (msg['cmd'] == 'info' and msg['type'] == 'whisper'
+        and msg['from'] != com['owname'].split('#')[0]
+        and msg['trip'] != com['owntrip']):
+            if msg['text'].lower().strip().split()[2] == '|tmsg' or msg['text'].lower().strip().split()[2] == 'tmsg':
+                try:
+                    receiverTrip = msg['text'].strip().split()[3]
+                    senderTrip = msg['trip']
+                    wspPreserv = re.compile('[\S\s]*')
+                    ml = wspPreserv.findall(msg['text'])
+                    m = ''.join(ml)
+                    m = m.split('whispered: ', 1)[1]
+                    m = m.strip().split(receiverTrip, 1)[1]
+                    t = time.time()
+                except IndexError:
+                    ws.send(json.dumps({'cmd': 'chat', 'text':
+                        '/r Usage is /whisper @%s |tmsg [recipient trip] [your message]' % (com['owname'].split('#')[0])}))
+                    return
+                if len(receiverTrip) == 6 and len(m) > 0 and receiverTrip != senderTrip and receiverTrip != com['owntrip']:
+                    usrwsptmsg.setdefault(receiverTrip, {})[senderTrip] = m, t
+                    ws.send(json.dumps({'cmd': 'chat', 'text': '/r user with the trip *__%s__* will get '
+                    'your message whispered the first time he writes something or joins this room.'
+                        % (receiverTrip)}))
+                    global wspCnt
+                    wspCnt += 1
+                    print('Stored private message count: {}'.format(wspCnt))
+                else:
+                    ws.send(json.dumps({'cmd': 'chat', 'text':
+                        '/r Usage is /w @%s |tmsg [recipient trip] [your message]' % (com['owname'].split('#')[0])}))
+                if msg['trip'] in usrwsptmsg.keys():
+                    for key, val in usrwsptmsg.items():
+                        if key == msg['trip']:
+                            for k, v in val.items():
+                                ws.send(json.dumps({'cmd': 'chat', 'text': '/r @%s user with the trip *__%s__* '
+                                'left you(%s ago): %s'
+                                    % (msg['from'], k, prsDrtn(time.time() - v[1]), v[0])}))
+                                time.sleep(0.5)
+                            del usrwsptmsg[key]
+                            wspCnt -= 1
+                            print('Stored private message count: {}'.format(wspCnt))
+                            break
+            elif msg['trip'] in usrwsptmsg.keys():
+                    for key, val in usrwsptmsg.items():
+                        if key == msg['trip']:
+                            for k, v in val.items():
+                                ws.send(json.dumps({'cmd': 'chat', 'text': '/r @%s user with the trip *__%s__* '
+                                'left you(%s ago): %s'
+                                    % (msg['from'], k, prsDrtn(time.time() - v[1]), v[0])}))
+                                time.sleep(0.5)
+                            del usrwsptmsg[key]
+                            wspCnt -= 1
+                            print('Stored private message count: {}'.format(wspCnt))
+                            break
+
+    elif msg['cmd'] == 'onlineAdd' or msg['cmd'] == 'chat':
+        for key, val in usrwsptmsg.items():
+            if key == msg['trip']:
+                for k, v in val.items():
+                    ws.send(json.dumps({'cmd': 'chat', 'text': '/whisper @%s user with the trip *__%s__* '
+                    'left you(%s ago): %s'
+                        % (msg['nick'], k, prsDrtn(time.time() - v[1]), v[0])}))
+                    time.sleep(0.5)
+                del usrwsptmsg[key]
+                wspCnt -= 1
+                print('Stored private message count: {}'.format(wspCnt))
                 break
 
 
-def heartBeat():
-    while(True):
-        time.sleep(40)
-        ws.send(json.dumps({'cmd': 'ping'}))
+def renderImgur(msg):
+    if msg['cmd'] == 'chat':
+        content_regx = re.compile(r'<meta name=\"twitter:image\".+?content=\"(.*?)\">') # Extract imgur source link
+        imageBody = []
+        valid_urls = ["https://imgur.io/", "https://imgur.com/"]
+        for word in msg['text'].split():
+            if [url for url in valid_urls if word.startswith(url)]:
+                purl = urllib.request.urlopen(word.split(' ')[0])
+                urlbytes = purl.read()
+                urlstr = urlbytes.decode('utf8')
+                purl.close()
+                imageBody.append(urlstr)
+        for ib in imageBody:
+            imageUrl = str(content_regx.findall(ib)[0])
+            ws.send(json.dumps({'cmd': 'chat', 'text': '![]({})'.format(imageUrl)})) # Use markdown image syntax implemented in the client to render the image inside text
+            time.sleep(0.2)
 
 
 def on_message(ws, message):
     message = json.loads(message)
     for i in message:
-        unicodedata.normalize('NFKD', i).encode('ascii', 'ignore')
+        unicodedata.normalize('NFKD', i).encode('ascii', 'ignore').decode('utf8')
         #print (i, message[i])
     cmndBlk(message)
     leaveMsg(message)
     whisplveMsg(message)
-
-
+    leaveTripmsg(message)
+    whspTripMsg(message)
+    renderImgur(message)
+ 
 def on_error(ws, error):
-    print(error)
-
+    if f'{error}' == "'type'": # otherwise prints 'type' on join
+        pass
+    elif f'{error}' == "'trip'": # stop multiple 'trip' prints on |tmsg
+        pass
+    else:
+        print(error)
 
 def on_close(ws):
+    print('Private message count: {}'.format(wspCnt))
     print('### closed ###')
-
 
 def on_open(ws):
     ws.send(json.dumps({'cmd': 'join', 'channel': 'programming', 'nick': com['owname']}))
+    ws.send(json.dumps({'cmd': 'chat', 'text':'/color #007fff'}))
     global joined
     joined = time.time()
-    _thread.start_new_thread(heartBeat, ())
     _thread.start_new_thread(out, ())
 
 
 if __name__ == '__main__':
     ws = websocket.WebSocketApp('wss://hack.chat/chat-ws',
+                                 on_open = on_open,
+                                 on_message = on_message,
                                  on_error = on_error,
                                  on_close = on_close,
                                )
-    ws.on_open = on_open
     ws.run_forever(sslopt={'cert_reqs': ssl.CERT_NONE})
-    #while True:
-        #try:
-            #ws.run_forever(sslopt={'cert_reqs': ssl.CERT_NONE})
-        #except:
-            #pass
+
